@@ -1,0 +1,4 @@
+.:54 {
+	adblocker oisd_small_domains.txt
+	forward . 8.8.8.8:53
+}
