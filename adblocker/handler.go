@@ -2,6 +2,7 @@ package adblocker
 
 import (
 	"context"
+	"net"
 	"strings"
 
 	"github.com/coredns/coredns/plugin"
@@ -20,7 +21,23 @@ func (p *Plug) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (
 		q := r.Question[0]
 		if _, ok := p.BlockEntries[strings.TrimSuffix(q.Name, ".")]; ok {
 			clog.Infof("Blocking %s", q.Name)
-			return dns.RcodeBadKey, nil
+
+			// Create a new blocked reply message
+			resp := &dns.Msg{}
+			resp.SetReply(r)
+			resp.Answer = append(resp.Answer, &dns.A{
+				Hdr: dns.RR_Header{
+					Name:   q.Name,
+					Rrtype: dns.TypeA,
+					Ttl:    3600,
+					Class:  dns.ClassINET,
+				},
+				A: net.IPv4zero, // Block IP
+			})
+
+			// Write the response to the client
+			w.WriteMsg(resp)
+			return resp.Rcode, nil
 		}
 		clog.Infof("Not blocking %s", q.Name)
 	}
